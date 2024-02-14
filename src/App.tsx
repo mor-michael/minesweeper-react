@@ -1,8 +1,12 @@
+import GameBoard from "./components/GameBoard";
+import Header from "./components/Header";
+
 function App() {
   return (
-    <>
-      <h1 className="text-6xl text-blue-300">soon to be minesweeper</h1>
-    </>
+    <div className="max-w-[1440px] font-inter mx-auto">
+      <Header />
+      <GameBoard />
+    </div>
   );
 }
 
