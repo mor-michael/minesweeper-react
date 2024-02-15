@@ -5,99 +5,100 @@ import {
   generateMineLocations,
 } from "../../utils/game-utils";
 
-type updateCellState = (
-  x: number,
-  y: number,
-  newCellState: { isOpen: boolean; isMine: boolean }
-) => void;
+export type Cell = {
+  isOpen: boolean;
+  isMine: boolean;
+  number: number;
+};
 
-type initMines = (firstCellLocation: number[]) => void;
+type revealCells = (x: number, y: number) => void;
 
 type CellProps = {
   index: number;
   isOpen: boolean;
   isMine: boolean;
-  updateCellState: updateCellState;
   x: number;
   y: number;
-  rows: number;
-  cols: number;
-  initMines: initMines;
+  revealCells: revealCells;
 };
 
 // Memoize Cell component to avoid rerendering the whole list
 // of cells when modifying only handful
-const Cell = memo(
-  ({
-    index,
-    x,
-    y,
-    rows,
-    cols,
-    updateCellState,
-    isOpen,
-    isMine,
-    initMines,
-  }: CellProps) => {
-    const bgColor = `${isOpen ? "bg-gray-300" : "bg-gray-400"}`;
+const Cell = memo(({ index, x, y, isOpen, isMine, revealCells }: CellProps) => {
+  const bgColor = `${isOpen ? "bg-gray-300" : "bg-gray-400"}`;
 
-    function handleClick() {
-      updateCellState(x, y, { isOpen: !isOpen, isMine: isMine });
-      initMines([x, y]);
-      console.log(findNeighbors(x, y, rows, cols));
-    }
-
-    useEffect(() => console.log("cell rerender"));
-
-    return (
-      <button
-        onClick={handleClick}
-        className={`w-[56px] h-[56px] rounded-sm ${bgColor}`}
-      >
-        {index}
-        {isMine ? "*" : ""}
-      </button>
-    );
+  function handleClick() {
+    revealCells(x, y);
   }
-);
+
+  useEffect(() => console.log("cell rerender"));
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`w-[56px] h-[56px] rounded-sm ${bgColor}`}
+    >
+      {isMine ? "*" : isOpen && index}
+    </button>
+  );
+});
 
 function GameBoard({ cols = 9, rows = 9, mineAmount = 10 }) {
   const [cells, setCells] = useState(() => initCells(cols, rows));
   const [minesGenerated, setMinesGenerated] = useState(false);
 
-  // useCallback with functional updates to make other cells not rerender
-  const updateCellState = useCallback(
-    (
-      x: number,
-      y: number,
-      newCellState: { isOpen: boolean; isMine: boolean }
-    ) => {
-      setCells((prevCells) =>
-        prevCells.map((cells, rowIndex) =>
-          cells.map((cell, colIndex) =>
-            rowIndex !== x || colIndex !== y
-              ? cell
-              : { ...cell, ...newCellState }
-          )
-        )
-      );
-    },
-    []
-  );
+  useEffect(() => console.log("board rerender"));
+
   const initMines = useCallback(
     (firstCellLocation: number[]) => {
-      if (!minesGenerated) {
-        const mineLocations = generateMineLocations(
-          cols,
-          rows,
-          mineAmount,
-          firstCellLocation
-        );
-        mineLocations.map(([x, y]) =>
-          updateCellState(x, y, { isOpen: cells[x][y].isOpen, isMine: true })
-        );
-        setMinesGenerated(true);
+      const newCells = [...cells];
+      const mineLocations = generateMineLocations(
+        cols,
+        rows,
+        mineAmount,
+        firstCellLocation
+      );
+      mineLocations.forEach(([x, y]) => {
+        newCells[x][y] = { ...cells[x][y], isMine: true };
+      });
+      const newCellsNeighMines = newCells.map((cellRow, x) =>
+        cellRow.map((cell, y) => {
+          if (!cell.isMine) {
+            const neighbors = findNeighbors(x, y, rows, cols);
+            const neighborMines = neighbors.filter(
+              ([nx, ny]) => newCells[nx][ny].isMine
+            );
+            return { ...cell, number: neighborMines.length };
+          } else {
+            return { ...cell, number: 0 };
+          }
+        })
+      );
+      setMinesGenerated(true);
+      return newCellsNeighMines;
+    },
+    [minesGenerated] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const recursiveReveal = (cellArray: Cell[][], x: number, y: number) => {
+    cellArray[x][y] = { ...cellArray[x][y], isOpen: true };
+    const neighbors = findNeighbors(x, y, rows, cols);
+    neighbors.forEach(([neighX, neighY]) => {
+      if (
+        !cellArray[neighX][neighY].isMine &&
+        !cellArray[neighX][neighY].isOpen &&
+        cellArray[x][y].number === 0
+      ) {
+        recursiveReveal(cellArray, neighX, neighY);
       }
+    });
+  };
+
+  const revealCells = useCallback(
+    (x: number, y: number) => {
+      const newCells = minesGenerated ? [...cells] : initMines([x, y]);
+      recursiveReveal(newCells, x, y);
+      setCells(newCells);
     },
     [minesGenerated] // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -114,14 +115,11 @@ function GameBoard({ cols = 9, rows = 9, mineAmount = 10 }) {
           <Cell
             isOpen={isOpen}
             isMine={isMine}
-            updateCellState={updateCellState}
             index={number}
-            key={number}
+            key={colIndex}
             x={rowIndex}
             y={colIndex}
-            rows={rows}
-            cols={cols}
-            initMines={initMines}
+            revealCells={revealCells}
           />
         ))
       )}

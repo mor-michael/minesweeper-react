@@ -2,27 +2,19 @@ export function initCells(rows: number, cols: number) {
   const cell = {
     isOpen: false,
     isMine: false,
+    number: 0,
   };
   const colArray = [];
-  let count = 0;
   for (let c = 0; c < cols; c++) {
     const rowArray = [];
     for (let r = 0; r < rows; r++) {
-      const newCell = { ...cell, number: count };
-      rowArray.push(newCell);
-      count++;
+      rowArray.push(cell);
     }
     colArray.push(rowArray);
   }
   return colArray;
 }
 
-// export type findNeighbors = (
-//   row: number,
-//   col: number,
-//   rows: number,
-//   cols: number
-// ) => number[][];
 export function findNeighbors(
   row: number,
   col: number,
@@ -41,17 +33,6 @@ export function findNeighbors(
   ].filter(([row, col]) => row >= 0 && col >= 0 && row < rows && col < cols);
 }
 
-// export type Cell = {
-//   isOpen: boolean;
-//   isMine: boolean;
-//   number: number;
-// };
-// export type generateMineLocations = (
-//   rows: number,
-//   cols: number,
-//   mineAmount: number,
-//   firstCellLocation: number[]
-// ) => number[][];
 export function generateMineLocations(
   rows: number,
   cols: number,
