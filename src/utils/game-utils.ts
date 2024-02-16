@@ -2,7 +2,8 @@ export function initCells(rows: number, cols: number) {
   const cell = {
     isOpen: false,
     isMine: false,
-    number: 0,
+    neighMines: 0,
+    isFlagged: false,
   };
   const colArray = [];
   for (let c = 0; c < cols; c++) {
@@ -33,6 +34,18 @@ export function findNeighbors(
   ].filter(([row, col]) => row >= 0 && col >= 0 && row < rows && col < cols);
 }
 
+function shuffle(arr: number[][]) {
+  let i = arr.length,
+    j,
+    temp;
+  while (--i > 0) {
+    j = Math.floor(Math.random() * (i + 1));
+    temp = arr[j];
+    arr[j] = arr[i];
+    arr[i] = temp;
+  }
+}
+
 export function generateMineLocations(
   rows: number,
   cols: number,
@@ -45,10 +58,9 @@ export function generateMineLocations(
       locationArray.push([r, c]);
     }
   }
-  const shuffledCells = locationArray
-    .filter(
-      ([x, y]) => x !== firstCellLocation[0] || y !== firstCellLocation[1]
-    )
-    .sort(() => (Math.random() > 0.5 ? 1 : -1));
-  return shuffledCells.slice(0, mineAmount);
+  locationArray.splice(
+    locationArray.indexOf([firstCellLocation[0], firstCellLocation[0]])
+  );
+  shuffle(locationArray);
+  return locationArray.slice(0, mineAmount);
 }
